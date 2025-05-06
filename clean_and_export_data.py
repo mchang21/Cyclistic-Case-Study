@@ -122,5 +122,8 @@ print(f"Percentage of data lost if dropping rows with missing values after clean
 # Percentage of data lost if dropping rows with missing values before cleaning: 28.23%
 # Percentage of data lost if dropping rows with missing values after cleaning : 0.68%
 
+# Drop rows with missing data
+df = df.dropna()
+
 # Write the clean data to a csv
 # df.to_csv("cleaned_data.csv", index=False)
