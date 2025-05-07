@@ -1,5 +1,5 @@
 ---
-title: "Cyclystic Case Study"
+title: "Cyclistic Case Study"
 author: "Melvin Chang"
 date: ""
 output: html_document
@@ -27,4 +27,74 @@ Three questions will guide the future marketing program:
 
 For this case study, I am tasked to answer the first question: How do annual members and casual riders use Cyclistic bikes differently?
 
+
+## Import libraries
+```{r}
+library(ggplot2)
+library(hms)
+library(scales)
+library(tidyverse)
+```
+
+## Import data
+In order to being the analysis, we import the cleaned data which should not contain any missing values in any of our columns. The data being imported was partially cleaned in Python where it merges the 12 original datasets and tries to fill in as many missing values in the `start_station_name`, `start_station_id`, `end_station_name`, and `end_station_id` columns.
+```{r}
+# Import bike data for the months Jan 2024 - Dec 2024
+bike_data_2024 <- read_csv("data/cleaned_data.csv")
+```
+
+## Data wrangling
+
+Check the column names, data types, head of the data, and missing data in the columns.
+```{r}
+glimpse(bike_data_2024)
+colSums(is.na(bike_data_2024)) > 0
+```
+
+The data types for each column are as expected, and there are no missing values anywhere.
+
+Next, we will remove any duplicate data if it exists.
+```{r}
+# Remove rows that are complete duplicates of other rows
+bike_data_2024 <- distinct(bike_data_2024)
+```
+
+There are two columns that we will need to add to help with the analysis. The first column to add is a `ride_duration` column which will describe the length of the ride. The second column to add is a `day_of_week` column which describe which day of the week the ride took place on.
+```{r}
+# Add column for duration of the ride is HH:MM:SS
+bike_data_2024 <- bike_data_2024 |> 
+    mutate(duration_secs = as.numeric(difftime(ended_at, started_at, units = "secs"))) |> 
+    mutate(ride_duration = as_hms(duration_secs))
+
+# Add column for day of the week 
+bike_data_2024 <- bike_data_2024 |> 
+    mutate(day_of_week = weekdays(as.Date(started_at)))
+```
+
+Now we can check if there are any abnormalities.
+```{r}
+bike_data_2024 |> 
+    select(duration_secs, ride_duration) |> 
+    summary()
+```
+
+Based on the summary, we can see that there are negative values which should not exist, as well as durations over 24 hours which is an outlier. We can begin by filtering out any rows which have a duration equal to zero or is negative.
+```{r}
+bike_data_2024 <- bike_data_2024 |> 
+    filter(duration_secs > 0)
+```
+
+After removing values less than or equal to zero, we can remove outliers using the IQR method.
+```{r}
+Q1 <- quantile(bike_data_2024$duration_secs, 0.25)
+Q3 <- quantile(bike_data_2024$duration_secs, 0.75)
+IQR <- Q3 - Q1
+
+lower_bound <- Q1 - 1.5 * IQR
+upper_bound <- Q3 + 1.5 * IQR
+
+# Filter out the outliers from the data set
+bike_data_2024 <- bike_data_2024 |> 
+    filter(duration_secs >= lower_bound & duration_secs <= upper_bound)
+```
 
