@@ -29,7 +29,7 @@ For this case study, I am tasked to answer the first question: How do annual mem
 
 
 ## Import libraries
-```{r}
+```{r import-libraries}
 library(ggplot2)
 library(hms)
 library(scales)
@@ -37,8 +37,8 @@ library(tidyverse)
 ```
 
 ## Import data
-In order to being the analysis, we import the cleaned data which should not contain any missing values in any of our columns. The data being imported was partially cleaned in Python where it merges the 12 original datasets and tries to fill in as many missing values in the `start_station_name`, `start_station_id`, `end_station_name`, and `end_station_id` columns.
-```{r}
+In order to begin the analysis, we import the cleaned data which should not contain any missing values in any of our columns. The data being imported was partially cleaned in Python where it merges the 12 original datasets and tries to fill in as many missing values in the `start_station_name`, `start_station_id`, `end_station_name`, and `end_station_id` columns.
+```{r import-data}
 # Import bike data for the months Jan 2024 - Dec 2024
 bike_data_2024 <- read_csv("data/cleaned_data.csv")
 ```
@@ -46,21 +46,25 @@ bike_data_2024 <- read_csv("data/cleaned_data.csv")
 ## Data wrangling
 
 Check the column names, data types, head of the data, and missing data in the columns.
-```{r}
+```{r glimpse-data}
 glimpse(bike_data_2024)
 colSums(is.na(bike_data_2024)) > 0
 ```
 
-The data types for each column are as expected, and there are no missing values anywhere.
+The data types for each column are as expected, and there are no missing values anywhere. However, `member_casual` should be renamed for clarity.
+```{r rename-data}
+bike_data_2024 <- bike_data_2024 |> 
+    rename(rider_type = member_casual)
+```
 
 Next, we will remove any duplicate data if it exists.
-```{r}
+```{r remove-dupes}
 # Remove rows that are complete duplicates of other rows
 bike_data_2024 <- distinct(bike_data_2024)
 ```
 
-There are two columns that we will need to add to help with the analysis. The first column to add is a `ride_duration` column which will describe the length of the ride. The second column to add is a `day_of_week` column which describe which day of the week the ride took place on.
-```{r}
+There are two columns that we will need to add to help with the analysis. The first column to add is `ride_duration` which will describe the length of the ride. The second column to add is `day_of_week` which will describe which day of the week the ride took place on.
+```{r add-cols}
 # Add column for duration of the ride is HH:MM:SS
 bike_data_2024 <- bike_data_2024 |> 
     mutate(duration_secs = as.numeric(difftime(ended_at, started_at, units = "secs"))) |> 
@@ -72,20 +76,20 @@ bike_data_2024 <- bike_data_2024 |>
 ```
 
 Now we can check if there are any abnormalities.
-```{r}
+```{r check-data}
 bike_data_2024 |> 
     select(duration_secs, ride_duration) |> 
     summary()
 ```
 
-Based on the summary, we can see that there are negative values which should not exist, as well as durations over 24 hours which is an outlier. We can begin by filtering out any rows which have a duration equal to zero or is negative.
-```{r}
+Based on the summary, we can see that there are negative values, as well as ride durations over 24 hours. It is not possible for ride lengths to be of negative lengths, and it is unreasonable for some rides to occur for over 24 hours. To further clean this data, we can begin by filtering out any rows which have a duration less than or equal to zero.
+```{r remove-negatives}
 bike_data_2024 <- bike_data_2024 |> 
     filter(duration_secs > 0)
 ```
 
 After removing values less than or equal to zero, we can remove outliers using the IQR method.
-```{r}
+```{r remove-outliers}
 Q1 <- quantile(bike_data_2024$duration_secs, 0.25)
 Q3 <- quantile(bike_data_2024$duration_secs, 0.75)
 IQR <- Q3 - Q1
@@ -97,4 +101,99 @@ upper_bound <- Q3 + 1.5 * IQR
 bike_data_2024 <- bike_data_2024 |> 
     filter(duration_secs >= lower_bound & duration_secs <= upper_bound)
 ```
+
+## Exploratory Data Analysis
+
+We can start to look at some statistics about the ride durations.
+```{r check-stats}
+bike_data_2024 |> 
+    summarize(
+        Min_Ride_Length = format(as_hms(min(ride_duration))),
+        Max_Ride_Length = format(as_hms(max(ride_duration))),
+        Average_Ride_Length = format(as_hms(mean(ride_duration)))
+        )
+```
+
+The shortest ride that occurred lasted only 0.039 seconds. This may be a sign that the ride was started accidentally. Meanwhile, the longest ride lasted for as long as 34 minutes. The average ride lasts for roughly 11 minutes.
+
+Next, we can look at the frequency for which rides occurred for each day of the week.
+```{r ride-frequency}
+# Plot bar graph for ride count by day of week
+bike_data_2024 |> 
+    mutate(
+        day_of_week = factor(day_of_week,
+        levels = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"))) |> 
+    ggplot(aes(x=day_of_week)) +
+    geom_bar() +
+    scale_y_continuous(labels = comma) +
+    labs(title="Count of Rides by Day", x="Day of the Week", y="Count") +
+    theme_minimal()
+
+# Shows count of rides by the day of the week from largest to lowest
+bike_data_2024 |> 
+    count(day_of_week) |> 
+    arrange(desc(n))
+```
+
+Based on the analysis and visualization, we can see that Wednesday was the most common day for bike rides with 825,085 rides occuring on that day. This is closely followed by Saturday with a total of 814,551 rides. Meanwhile, while Sunday was the least common at only 690,745 rides. This is a difference of 17.72%. However, this doesn't tell us much about how casual riders and members choose what days to ride their bikes.
+
+```{r ride-frequency-by-rider-type}
+# Bar graph to show the count of rides by day of the week, by rider type
+bike_data_2024 |> 
+    mutate(
+        day_of_week = factor(day_of_week,
+        levels = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"))) |> 
+    ggplot(aes(x=day_of_week, fill=rider_type)) +
+    geom_bar(position = "dodge") +
+    scale_y_continuous(labels = comma) +
+    labs(title = "Ride Count by Day by Rider Type", x = "Day of the Week", y = "Count", fill = "Rider Type") +
+    theme_minimal()
+```
+
+In the graph pictured above, we observe how the weekdays all have a greater ride count than their weekend counterpart for annual members. In contrast, casual riders have a greater ride count on the weekend as opposed to the weekdays. This suggests that annual members may be more likely to ride bikes for the purpose of commuting to work while casual riders are more likely to ride the bikes for leisure.
+
+Next, we'll look into how the ride duration varies between the days of the week and between the rider types.
+```{r average-ride-length}
+# Average ride duration by the day of the week
+bike_data_2024 |> 
+    mutate(day_of_week = factor(day_of_week,
+        levels = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"))) |>
+    group_by(day_of_week) |> 
+    summarize(Average_Ride_Length = format(as_hms(mean(ride_duration))))
+
+# Average ride duration by member type 
+bike_data_2024 |> 
+    group_by(rider_type) |> 
+    summarize(Average_Ride_Length = format(as_hms(mean(ride_duration))))
+```
+
+The average ride length for weekdays is ~10.5 minutes while the average ride length for the weekend is ~12 minutes long. 
+
+The average ride duration for members is 10 minutes 16.21 seconds, while the average for casual riders is 12 minutes 12.25 seconds. These averages align with our observations made previously where there is a greater count of members riding bikes on the weekdays while there is a greater count of casual riders riding bikes on the weekend. The annual members may be driving the average for the ride duration towards 10.5 minutes for the weekdays, while casual riders are driving the average for the weekend towards 12 minutes.  
+
+Although casual members appear to have longer bike rides by about 2 minutes compared to annual members, we will want to delve deeper to ensure that this difference isn't driven by a small number of long rides. 
+```{r plot-density}
+# Density plot to visualize the distribution
+bike_data_2024 |> 
+    ggplot(aes(x = duration_secs, fill = rider_type)) +
+    geom_density(alpha = 0.4) +
+    scale_x_continuous(breaks = seq(0, 2000, by = 200), limits = c(0, quantile(bike_data_2024$duration_secs, 1))) +
+    scale_y_continuous(labels = comma) +
+    labs(title = "Density of Ride Durations by Rider Type", x = "Duration (secs)", fill = "Rider Type") +
+    theme_minimal()
+```
+
+From this plot, we observe that there exists a right-skewed curve for both types of riders in our data. Annual members maintain a higher concentration of rides between ride lengths of 1 minute 40 seconds to 10 minutes long. On the other hand, casual riders are more likely to take trips that last longer than 10 minutes compared to members. We can confirm that this is significant by running a t-test on the length of the bike ride by the rider type.
+
+```{r t-test}
+t.test(duration_secs ~ rider_type, data = bike_data_2024)
+```
+
+The p-value is effectively 0 which means that the difference in ride duration between casual riders and annual members is statistically significant. The t-test confirms to us that casual riders will average ~116 seconds longer than annual members with a 95% confidence interval between 115.20 seconds and 116.86 seconds. 
+
+To further test this, we can perform a linear regression on the duration of the ride based on the rider type.
+```{r linear-model}
+lm(duration_secs ~ rider_type, data = bike_data_2024) |> summary()
+```
+The results from the linear model supports the results generated from the t-test. The model clearly predicts that ride durations for annual members are shorter with a coefficient of -116.03 seconds.
 
