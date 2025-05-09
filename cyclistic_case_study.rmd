@@ -1,7 +1,7 @@
 ---
 title: "Cyclistic Case Study"
 author: "Melvin Chang"
-date: ""
+date: '`r format(Sys.time(), "%d %B, %Y")`'
 output: html_document
 ---
 
@@ -280,3 +280,18 @@ The ANOVA results support the earlier observations about the impact of rider typ
 
 However, because the proportion of rideable types used by each rider type is roughly similar, the shorter average ride durations observed for annual members are unlikely to be fully explained by differences in bike type usage. This suggests that membership status itself, and the likely usage intent (e.g., commuting vs. leisure) plays a more substantial role in determining the length of the ride than the bike type alone.
 
+## Conclusion
+
+Our analysis of the 2024 ride data reveals consistent and statistically significant differences in ride durations between casual riders and annual members. Casual riders tend to take longer rides, particularly on weekends, which would align with leisure-oriented use. In contrast, members take shorter, more frequent rides, predominantly on weekdays, suggesting usage for commuting.
+
+While rideable type (classic bike, electric bike, or electric scooter) does impact average ride duration, both types of riders use these options in similar proportions. Therefore, the bike type alone does not explain the shorter ride times among members. Instead, the analysis points to the rider type, and the likely purpose behind each ride as the primary driver of observed differences in ride durations.
+
+Understanding that casual riders enjoy longer, less frequent rides opens an opportunity to pitch membership benefits that align with their behavior. This could include deals such as offering flexible or discounted weekend ride bundles, or tiered memberships with perks for extended trips. Highlighting cost savings for frequent long-distance riders or convenience features like reserved bike availability may appeal to casual users who ride semi-regularly.
+
+Digital media can be leveraged to target casual riders with personalized messaging based on their ride history. Similarly to music-based applications, digital media can be used to provide an end-of-the-year recap summarizing the rider's statistics for the year. This recap could incorporate stats like the length of their longest ride, the total amount of distance they've ridden for the year, or even the most common locations they like to take their rides ons.
+
+Opportunities for further analysis could include:
+
+- Seasonal trends and weather impacts on rider behavior
+- Popular routes and stations for optimized bike distributions
+- Modeling ride patterns across different times of day and days of the week
