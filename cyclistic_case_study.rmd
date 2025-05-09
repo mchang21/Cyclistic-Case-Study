@@ -13,7 +13,7 @@ Cyclistic launched its bike-share program in 2016 which has grown to a fleet of 
 
 The company offers single-ride passes, full-day passes, and annual memberships. Customers who purchase single-ride or full-day passes are referred to as casual rider. Customers who purchase annual memberships are Cyclistic members. 
 
-Cyclistic's finance analysts have concluded that annual members are much more profitable than casual riders. The director of marketing believes that the company's future success depends on maximizing the number of annual memberships. Thus, the goal of the director of marketing is to design marketing strategies which aim to convert casual riders into annual members. However, before doing so, the team needs to have a better understanding of **how annual members and casual riders differ**, why casual riders would buy a membership, and how digital media could affect their marketing tactics. They would like to analyze the Cyclystic historical bike trip data to identify trends.
+Cyclistic's finance analysts have concluded that annual members are much more profitable than casual riders. The director of marketing believes that the company's future success depends on maximizing the number of annual memberships. Thus, the goal of the director of marketing is to design marketing strategies which aim to convert casual riders into annual members. However, before doing so, the team needs to have a better understanding of **how annual members and casual riders differ**, why casual riders would buy a membership, and how digital media could affect their marketing tactics. They would like to analyze the Cyclistic historical bike trip data to identify trends.
 
 The data that was used for this case study was for the year 2024 which can be found [here](https://divvy-tripdata.s3.amazonaws.com/index.html). 
 
@@ -23,10 +23,9 @@ Three questions will guide the future marketing program:
 
 1. How do annual members and casual riders use Cyclistic bikes differently? 
 2. Why would casual riders buy Cyclistic annual memberships?
-3. How can Cyclystic use digital media to influence casual riders to become members?
+3. How can Cyclistic use digital media to influence casual riders to become members?
 
 For this case study, I am tasked to answer the first question: How do annual members and casual riders use Cyclistic bikes differently?
-
 
 ## Import libraries
 ```{r import-libraries}
@@ -37,7 +36,7 @@ library(tidyverse)
 ```
 
 ## Import data
-In order to begin the analysis, we import the cleaned data which should not contain any missing values in any of our columns. The data being imported was partially cleaned in Python where it merges the 12 original datasets and tries to fill in as many missing values in the `start_station_name`, `start_station_id`, `end_station_name`, and `end_station_id` columns.
+To begin our analysis, we import the cleaned dataset. This dataset has already been partially processed in Python, where the original 12 monthly datasets were merged and efforts were made to fill in missing values in the `start_station_name`, `start_station_id`, `end_station_name`, and `end_station_id` columns. No missing values should remain in any column.
 ```{r import-data}
 # Import bike data for the months Jan 2024 - Dec 2024
 bike_data_2024 <- read_csv("data/cleaned_data.csv")
@@ -45,25 +44,29 @@ bike_data_2024 <- read_csv("data/cleaned_data.csv")
 
 ## Data wrangling
 
-Check the column names, data types, head of the data, and missing data in the columns.
+We start by inspecting the dataset to ensure the structure and content meet our expectations.
+
 ```{r glimpse-data}
 glimpse(bike_data_2024)
 colSums(is.na(bike_data_2024)) > 0
 ```
 
-The data types for each column are as expected, and there are no missing values anywhere. However, `member_casual` should be renamed for clarity.
+The data types for each column are as expected, and there are no missing values in the dataset. However, we should rename the `member_casual` column to `rider_type` for readability.
+
 ```{r rename-data}
 bike_data_2024 <- bike_data_2024 |> 
     rename(rider_type = member_casual)
 ```
 
-Next, we will remove any duplicate data if it exists.
+Next, we will remove any duplicate data if it exists to ensure that the dataset contains only unique observations.
+
 ```{r remove-dupes}
 # Remove rows that are complete duplicates of other rows
 bike_data_2024 <- distinct(bike_data_2024)
 ```
 
-There are two columns that we will need to add to help with the analysis. The first column to add is `ride_duration` which will describe the length of the ride. The second column to add is `day_of_week` which will describe which day of the week the ride took place on.
+To further support our analysis, we add two new columns to help with the analysis: `ride_duration`, which captures the duration of each ride, and `day_of_week`, indicates which day of the week the ride took place on.
+
 ```{r add-cols}
 # Add column for duration of the ride is HH:MM:SS
 bike_data_2024 <- bike_data_2024 |> 
@@ -75,7 +78,7 @@ bike_data_2024 <- bike_data_2024 |>
     mutate(day_of_week = weekdays(as.Date(started_at)))
 ```
 
-Now we can check if there are any abnormalities.
+We can now check if there are any abnormalities.
 ```{r check-data}
 bike_data_2024 |> 
     select(duration_secs, ride_duration) |> 
@@ -83,12 +86,14 @@ bike_data_2024 |>
 ```
 
 Based on the summary, we can see that there are negative values, as well as ride durations over 24 hours. It is not possible for ride lengths to be of negative lengths, and it is unreasonable for some rides to occur for over 24 hours. To further clean this data, we can begin by filtering out any rows which have a duration less than or equal to zero.
+
 ```{r remove-negatives}
 bike_data_2024 <- bike_data_2024 |> 
     filter(duration_secs > 0)
 ```
 
-After removing values less than or equal to zero, we can remove outliers using the IQR method.
+After removing values less than or equal to zero, we can remove outliers using the IQR method. This helps eliminate rides with unusually long durations that could distort our analysis.
+
 ```{r remove-outliers}
 Q1 <- quantile(bike_data_2024$duration_secs, 0.25)
 Q3 <- quantile(bike_data_2024$duration_secs, 0.75)
@@ -104,7 +109,8 @@ bike_data_2024 <- bike_data_2024 |>
 
 ## Exploratory Data Analysis
 
-We can start to look at some statistics about the ride durations.
+We can begin the analysis by calculating summary statistics for ride durations.
+
 ```{r check-stats}
 bike_data_2024 |> 
     summarize(
@@ -114,9 +120,10 @@ bike_data_2024 |>
         )
 ```
 
-The shortest ride that occurred lasted only 0.039 seconds. This may be a sign that the ride was started accidentally. Meanwhile, the longest ride lasted for as long as 34 minutes. The average ride lasts for roughly 11 minutes.
+The shortest recorded ride lasted only 0.039 seconds, likely due to a false start or system error. Meanwhile, the longest ride lasted for 34 minutes, and the average ride duration is approximately 11 minutes.
 
-Next, we can look at the frequency for which rides occurred for each day of the week.
+Next, we can examine how ride frequency varies by day of the week.
+
 ```{r ride-frequency}
 # Plot bar graph for ride count by day of week
 bike_data_2024 |> 
@@ -126,7 +133,10 @@ bike_data_2024 |>
     ggplot(aes(x=day_of_week)) +
     geom_bar() +
     scale_y_continuous(labels = comma) +
-    labs(title="Count of Rides by Day", x="Day of the Week", y="Count") +
+    labs(
+        title="Count of Rides by Day",
+        x="Day of the Week",
+        y="Count") +
     theme_minimal()
 
 # Shows count of rides by the day of the week from largest to lowest
@@ -135,8 +145,9 @@ bike_data_2024 |>
     arrange(desc(n))
 ```
 
-Based on the analysis and visualization, we can see that Wednesday was the most common day for bike rides with 825,085 rides occuring on that day. This is closely followed by Saturday with a total of 814,551 rides. Meanwhile, while Sunday was the least common at only 690,745 rides. This is a difference of 17.72%. However, this doesn't tell us much about how casual riders and members choose what days to ride their bikes.
+The bar chart and summary indicate that Wednesday has the highest number of rides (825,085), followed closely by Saturday (814,551). Sunday had the fewest rides (690,745), which is a 17.72% drop from Wednesday. However, this aggregated view doesn’t reveal rider-type-specific patterns.
 
+To further explore this, we break down the ride frequency by the rider type and day of the week.
 ```{r ride-frequency-by-rider-type}
 # Bar graph to show the count of rides by day of the week, by rider type
 bike_data_2024 |> 
@@ -146,13 +157,17 @@ bike_data_2024 |>
     ggplot(aes(x=day_of_week, fill=rider_type)) +
     geom_bar(position = "dodge") +
     scale_y_continuous(labels = comma) +
-    labs(title = "Ride Count by Day by Rider Type", x = "Day of the Week", y = "Count", fill = "Rider Type") +
+    labs(
+        title = "Ride Count by Day by Rider Type",
+        x = "Day of the Week",
+        y = "Count",
+        fill = "Rider Type") +
     theme_minimal()
 ```
 
-In the graph pictured above, we observe how the weekdays all have a greater ride count than their weekend counterpart for annual members. In contrast, casual riders have a greater ride count on the weekend as opposed to the weekdays. This suggests that annual members may be more likely to ride bikes for the purpose of commuting to work while casual riders are more likely to ride the bikes for leisure.
+The chart shows a distinct trend between members and casual riders. Annual members take more rides on weekdays, while casual riders are more active on weekends. This suggests that members may primarily use the service for commuting to work, while casual riders are more likely to ride for leisure.
 
-Next, we'll look into how the ride duration varies between the days of the week and between the rider types.
+Next, we investigate how ride duration varies by day of the week and by rider type.
 ```{r average-ride-length}
 # Average ride duration by the day of the week
 bike_data_2024 |> 
@@ -166,34 +181,102 @@ bike_data_2024 |>
     group_by(rider_type) |> 
     summarize(Average_Ride_Length = format(as_hms(mean(ride_duration))))
 ```
+Weekday rides average around 10.5 minutes, while weekend rides average closer to 12 minutes.
 
-The average ride length for weekdays is ~10.5 minutes while the average ride length for the weekend is ~12 minutes long. 
+Members ride for an average of 10 minutes and 16 seconds, whereas casual riders average 12 minutes and 12 seconds -- a difference of nearly 2 minutes. Although casual members appear to have longer bike rides by about 2 minutes compared to annual members, we will want to delve deeper to ensure that this difference isn't skewed by a small number of long rides. 
 
-The average ride duration for members is 10 minutes 16.21 seconds, while the average for casual riders is 12 minutes 12.25 seconds. These averages align with our observations made previously where there is a greater count of members riding bikes on the weekdays while there is a greater count of casual riders riding bikes on the weekend. The annual members may be driving the average for the ride duration towards 10.5 minutes for the weekdays, while casual riders are driving the average for the weekend towards 12 minutes.  
+We'll visualize the full distribution of ride durations for each type of rider using a density plot.
 
-Although casual members appear to have longer bike rides by about 2 minutes compared to annual members, we will want to delve deeper to ensure that this difference isn't driven by a small number of long rides. 
 ```{r plot-density}
 # Density plot to visualize the distribution
 bike_data_2024 |> 
     ggplot(aes(x = duration_secs, fill = rider_type)) +
     geom_density(alpha = 0.4) +
-    scale_x_continuous(breaks = seq(0, 2000, by = 200), limits = c(0, quantile(bike_data_2024$duration_secs, 1))) +
+    scale_x_continuous(breaks = seq(0, 2000, by = 200)) +
     scale_y_continuous(labels = comma) +
-    labs(title = "Density of Ride Durations by Rider Type", x = "Duration (secs)", fill = "Rider Type") +
+    labs(
+        title = "Density of Ride Durations by Rider Type",
+        x = "Duration (secs)",
+        fill = "Rider Type") +
     theme_minimal()
 ```
 
-From this plot, we observe that there exists a right-skewed curve for both types of riders in our data. Annual members maintain a higher concentration of rides between ride lengths of 1 minute 40 seconds to 10 minutes long. On the other hand, casual riders are more likely to take trips that last longer than 10 minutes compared to members. We can confirm that this is significant by running a t-test on the length of the bike ride by the rider type.
+From this plot, we observe a right-skewed curve for both types of riders. Annual members maintain a higher concentration of rides between ride lengths of 1 minute and 40 seconds to 10 minutes long. On the other hand, casual riders are more likely to take trips lasting over 10 minutes compared to members. To confirm whether this difference is statistically significant, we perform a t-test on the length of the bike ride by the rider type.
 
 ```{r t-test}
 t.test(duration_secs ~ rider_type, data = bike_data_2024)
 ```
 
-The p-value is effectively 0 which means that the difference in ride duration between casual riders and annual members is statistically significant. The t-test confirms to us that casual riders will average ~116 seconds longer than annual members with a 95% confidence interval between 115.20 seconds and 116.86 seconds. 
+The t-test results indicate that the p-value is effectively 0 which means that the difference in ride duration between casual riders and annual members is statistically significant. The t-test confirms that casual riders will average approximately 116 seconds longer than annual members with a 95% confidence interval between 115.20 seconds and 116.86 seconds. 
 
-To further test this, we can perform a linear regression on the duration of the ride based on the rider type.
+To validate this further, we can perform a linear regression on the ride duration by rider type.
+
 ```{r linear-model}
-lm(duration_secs ~ rider_type, data = bike_data_2024) |> summary()
+lm(duration_secs ~ rider_type, data = bike_data_2024) |> 
+    summary()
 ```
+
 The results from the linear model supports the results generated from the t-test. The model clearly predicts that ride durations for annual members are shorter with a coefficient of -116.03 seconds.
+
+We will also assess whether the type of rideable bike influences the ride duration. Riders can choose between a classic bike, electric bike, and electric scooter. 
+
+```{r bike-type-summary}
+# Show summary of bike types
+bike_data_2024 |> 
+  group_by(rideable_type) |> 
+  summarize(
+    average_duration = format(as_hms(mean(duration_secs))),
+    ride_count = n()
+  )
+
+# Plot of average ride duration by bike type and rider type
+bike_data_2024 |> 
+  group_by(rider_type, rideable_type) |> 
+  summarise(mean_duration = mean(duration_secs)) |> 
+  ggplot(aes(x = rideable_type, y = mean_duration, fill = rider_type)) +
+  geom_col(position = "dodge") +
+  labs(
+    title = "Average Ride Duration by Bike Type and Rider Type",
+    x = "Rideable Type",
+    y = "Average Duration (secs)",
+    fill="Rider Type") +
+  theme_minimal()
+```
+
+The averages for the three bike types clearly indicate how the electric variants result in a shorter average ride duration. Rides on classic bikes last for ~2 minutes longer than electric bike rides, and ~3 minutes longer than electric scooter rides. Similarly to the rider type, we will test the significance of the bike types on the average duration of a ride.
+
+```{r bike-type-proportions}
+# Calculate ratio between bike types by rider types
+rideable_ratio <- bike_data_2024 |> 
+    count(rider_type, rideable_type) |> 
+    group_by(rider_type) |> 
+    mutate(proportion = n / sum(n)) 
+
+# Plot the proportions onto a stacked bar graph
+rideable_ratio |> 
+    ggplot(aes(x = rider_type, y = proportion, fill = rideable_type)) +
+    geom_col() +
+    scale_y_continuous(labels = percent) +
+    labs(
+        title = "Proportion of Rideable Types by Rider Type", 
+        x = "Rider Type", 
+        y = "Proportion",
+        fill = "Bike Type") +
+    theme_minimal()
+
+rideable_ratio
+```
+
+The graph and summary above shows that the distribution of rideable types is relatively consistent between casual riders and annual members, indicating that both groups tend to use electric bikes, classic bikes, and scooters in similar proportions.
+
+Finally, we perform a two-way ANOVA to assess the influence of both rider type and rideable type on ride duration.
+
+```{r anova-test}
+aov(duration_secs ~ rider_type * rideable_type, data = bike_data_2024) |> 
+    summary()
+```
+
+The ANOVA results support the earlier observations about the impact of rider type on ride duration. The extremely low p-values for both rider type and rideable type indicate that these factors significantly influence average ride duration. In particular, the significant main effect for rider type confirms that casual and member riders differ in how long they ride, while the significant main effect for rideable type shows that the type of bike or scooter also impacts ride time. The interaction effect between rider type and rideable type is also statistically significant, meaning the impact of bike type on duration varies depending on the user group.
+
+However, because the proportion of rideable types used by each rider type is roughly similar, the shorter average ride durations observed for annual members are unlikely to be fully explained by differences in bike type usage. This suggests that membership status itself, and the likely usage intent (e.g., commuting vs. leisure) plays a more substantial role in determining the length of the ride than the bike type alone.
 
