@@ -21,3 +21,6 @@ Three questions will guide the future marketing program:
 3. How can Cyclystic use digital media to influence casual riders to become members?
 
 For this case study, I am tasked to answer the first question: How do annual members and casual riders use Cyclistic bikes differently?
+
+## Final
+Click [here](https://htmlpreview.github.io/?https://github.com/mchang21/Cyclistic-Case-Study/blob/main/cyclistic_case_study.html) to view the case study.
